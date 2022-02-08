@@ -21,7 +21,8 @@ const routes: Array<RouteRecordRaw> = [
 
 // 各画面のルーティング情報からルーターを作成
 const router = createRouter({
-  history: createWebHistory(),
+  // Viteの場合に環境変数で'/'と'/vue_tetris/'に分岐する方法がめんどそうなので、開発時も/vue_tetris/で固定
+  history: createWebHistory('/vue_tetris/'),
   routes: routes,
 });
 
