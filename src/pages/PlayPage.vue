@@ -33,12 +33,37 @@
     return "";
   }
 
+  const canDropCurrentTetromino = (): boolean => {
+    const {x, y} = tetromino.position;
+    const droppedPosition = {x, y: y + 1};
+
+    const data = tetromino.current.data;
+    return tetris.field.canMove(data, droppedPosition);
+  }
+
+  const nextTetrisField = () => {
+    const data = tetromino.current.data;
+    const position = tetromino.position;
+
+    tetris.field.update(data, position);
+
+    staticField = new Field(tetris.field.data);
+    tetris.field = Field.deepCopy(staticField);
+
+    tetromino.current = Tetromino.random();
+    tetromino.position = { x: 3, y: 0 };
+  };
+
  setInterval(() => {
    tetris.field = Field.deepCopy(staticField);
+
+   if (canDropCurrentTetromino()) {
+      tetromino.position.y++;
+   } else {
+     nextTetrisField();
+   }
  
-   tetromino.position.y++;
-   tetris.field.update(tetromino.current.data, tetromino.position);
- }, 1 * 1000);
+ }, 1 * 100);
  tetris.field.update(tetromino.current.data, tetromino.position);
 </script>
 
