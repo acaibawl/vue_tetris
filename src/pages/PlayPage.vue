@@ -1,20 +1,58 @@
 <script lang="ts" setup>
-  import { reactive, onMounted, onBeforeUnmount } from 'vue';
+  import { reactive, onBeforeUnmount, watch } from 'vue';
   import { Tetromino, TETROMINO_TYPE } from '../common/Tetromino';
   import { Field } from '../common/Field';
   // VSCodeのVeturプラグインで未定義・使われていないのエラーが出るが、プラグインが<script setup>に未対応なだけ
-import TetrominoPreviewComponent from '../components/TetrominoPreviewComponent.vue';
+  import TetrominoPreviewComponent from '../components/TetrominoPreviewComponent.vue';
+
+  const PLAY_STATUS = {
+    GAMESTART: 1,
+    PLAYING: 2,
+    GAMEOVER: 3,
+  } as const;
+  type PLAY_STATUS = typeof PLAY_STATUS[keyof typeof PLAY_STATUS];
 
   let staticField = new Field();
+
+  const gameStatus = reactive({ gameStatus: PLAY_STATUS.GAMESTART as PLAY_STATUS});
+  const isStandby = () => gameStatus.gameStatus !== PLAY_STATUS.PLAYING;
+  const gameStart = () => gameStatus.gameStatus = PLAY_STATUS.PLAYING;
+
   const tetris = reactive({
     field: new Field(),
     score: 0,
   });
+
+  watch(gameStatus, (currentState) => {
+    switch (currentState.gameStatus as PLAY_STATUS) {
+      case PLAY_STATUS.GAMESTART:
+        break;
+      case PLAY_STATUS.PLAYING:
+        document.addEventListener('keydown', onKeyDown);
+
+        staticField = new Field();
+        tetris.field = new Field();
+
+        tetromino.current = Tetromino.random();
+        tetromino.next = Tetromino.random();
+
+        tetris.score = 0;
+        resetDrop();
+
+        break;
+      case PLAY_STATUS.GAMEOVER:
+        document.removeEventListener('keydown', onKeyDown);
+
+        tetromino.next = Tetromino.empty();
+        break;
+    }
+  })
+
   const tetromino = reactive({
-    current: Tetromino.random(),
+    current: Tetromino.empty(),
     position: {x: 3, y: 0 },
     rotate: 0,
-    next: Tetromino.random(),
+    next: Tetromino.empty(),
   });
 
   const currentTetrominoData = () => {
@@ -65,6 +103,11 @@ import TetrominoPreviewComponent from '../components/TetrominoPreviewComponent.v
     tetromino.next = Tetromino.random();
     tetromino.rotate = 0;
     tetromino.position = { x: 3, y: 0 };
+
+    if (!canDropCurrentTetromino()) {
+      gameStatus.gameStatus = PLAY_STATUS.GAMEOVER as PLAY_STATUS;
+      resetDrop(true);
+    }
   };
 
   const onKeyDown = (e: KeyboardEvent) => {
@@ -134,9 +177,6 @@ import TetrominoPreviewComponent from '../components/TetrominoPreviewComponent.v
     return { score, field };
   }
 
-  onMounted(function() {
-    document.addEventListener('keydown', onKeyDown);
-  });
   onBeforeUnmount(function() {
     document.removeEventListener('keydown', onKeyDown);
   });
@@ -144,8 +184,9 @@ import TetrominoPreviewComponent from '../components/TetrominoPreviewComponent.v
   const resetDropInterval = () => {
     let intervalId = -1;
 
-    return () => {
+    return (gameover = false ) => {
       if (intervalId !== -1) clearInterval(intervalId);
+      if (gameover) return;
 
       intervalId = setInterval(() => {
         tetris.field = Field.deepCopy(staticField);
@@ -161,7 +202,6 @@ import TetrominoPreviewComponent from '../components/TetrominoPreviewComponent.v
 
   const resetDrop = resetDropInterval();
 
-  resetDrop();
 </script>
 
 <template>
@@ -191,6 +231,9 @@ import TetrominoPreviewComponent from '../components/TetrominoPreviewComponent.v
       <TetrominoPreviewComponent :tetromino="tetromino.next.data" />
       <ul class="data">
         <li>スコア： {{ tetris.score }}</li>
+        <li>
+          <button v-if="isStandby()" @click.self.stop="gameStart">ゲームスタート</button>
+        </li>
       </ul>
     </div>
   </div>
